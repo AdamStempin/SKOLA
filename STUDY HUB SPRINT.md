@@ -15,13 +15,3 @@
 - **Export údajov** – generovanie prehľadov úloh a štatistík do PDF alebo CSV.
 - **Generovanie študijného plánu** – vytvorenie plánu na základe skúšok, úloh a dostupného času.
 
-## Odporúčané funkcie
-
-Za najzaujímavejšie možnosti považujem:
-
-1. Automatické plánovanie učenia.
-2. Štatistiky a vyhodnocovanie produktivity.
-3. Zaznamenávanie Pomodoro relácií.
-4. Export údajov a štatistík.
-
-Tieto funkcie umožnia využiť FastAPI nielen na základné CRUD operácie, ale aj na spracovanie aplikačnej logiky a údajov.
