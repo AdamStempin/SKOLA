@@ -18,7 +18,7 @@
   <!-- Prihlásenie -->
   <section id="auth-view" class="center-card" hidden>
     <h1>StudyHub</h1>
-    <p class="muted">Tvoje poznámky, odkazy a úlohy do školy na jednom mieste.</p>
+    <p class="muted">Tvoje školské súbory, poznámky a odkazy na jednom mieste.</p>
 
     <button id="google-btn" class="btn btn-block" type="button">Pokračovať cez Google</button>
     <div class="divider"><span>alebo</span></div>
@@ -67,14 +67,13 @@
           <option value="">Všetky typy</option>
           <option value="note">Poznámky</option>
           <option value="link">Odkazy</option>
-          <option value="task">Úlohy</option>
+          <option value="file">Súbory</option>
         </select>
         <select id="filter-subject" aria-label="Predmet">
           <option value="">Všetky predmety</option>
         </select>
         <select id="sort" aria-label="Zoradiť">
           <option value="newest">Najnovšie</option>
-          <option value="due">Podľa termínu</option>
           <option value="title">Podľa názvu</option>
         </select>
         <button id="add-btn" class="btn btn-primary" type="button">+ Pridať</button>
@@ -98,7 +97,7 @@
         <select id="item-type">
           <option value="note">Poznámka</option>
           <option value="link">Odkaz</option>
-          <option value="task">Úloha</option>
+          <option value="file">Súbor</option>
         </select>
       </label>
 
@@ -118,10 +117,13 @@
         <input id="item-url" type="text" maxlength="2000" placeholder="https://…">
       </label>
 
-      <label for="item-due" id="row-due" hidden>
-        Termín
-        <input id="item-due" type="date">
+      <label for="item-file" id="row-file" hidden>
+        Súbor (max. 25 MB)
+        <input id="item-file" type="file">
+        <span id="item-file-current" class="small muted"></span>
       </label>
+
+      <progress id="upload-progress" max="100" value="0" hidden></progress>
 
       <label for="item-content">
         Obsah / popis

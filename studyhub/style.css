@@ -151,17 +151,14 @@ label input, label select, label textarea { margin-top: .25rem; color: var(--tex
   border-radius: var(--radius);
   padding: .9rem 1rem;
 }
-.card.done .card-title { text-decoration: line-through; color: var(--muted); }
 .card-head { display: flex; align-items: flex-start; gap: .6rem; }
-.card-head input[type="checkbox"] { width: 1.15rem; height: 1.15rem; margin-top: .3rem; flex: none; }
 .card-title { margin: 0; font-size: 1.05rem; font-weight: 600; word-break: break-word; flex: 1; }
 .card-meta { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0 0; font-size: .8rem; }
 .chip { background: var(--chip); border-radius: 999px; padding: .1rem .6rem; }
-.chip-due.overdue { color: var(--danger); font-weight: 600; }
-.chip-due.soon { color: var(--warn); font-weight: 600; }
 .card-link { display: inline-block; margin-top: .5rem; word-break: break-all; }
 .card-content { margin: .6rem 0 0; white-space: pre-wrap; word-break: break-word; color: var(--text); }
 .card-actions { display: flex; gap: .4rem; margin-top: .75rem; }
+progress { width: 100%; margin-bottom: .85rem; }
 
 /* Dialógy */
 dialog {

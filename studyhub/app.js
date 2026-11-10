@@ -8,12 +8,16 @@ import {
   getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
   getDoc, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {
+  getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 const $ = (id) => document.getElementById(id);
 const show = (el, on = true) => { el.hidden = !on; };
 
-const TYPE_LABEL = { note: "Poznámka", link: "Odkaz", task: "Úloha" };
+const TYPE_LABEL = { note: "Poznámka", link: "Odkaz", file: "Súbor" };
+const MAX_FILE_BYTES = 25 * 1024 * 1024;
 
 // ---------------------------------------------------------------------------
 // Inicializácia
@@ -26,6 +30,7 @@ if (firebaseConfig.apiKey.startsWith("VLOZ_")) {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 let currentUser = null;
 let items = [];           // všetky položky prihláseného používateľa
@@ -72,23 +77,37 @@ function safeUrl(raw) {
   }
 }
 
-function todayStr() {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+function formatSize(bytes) {
+  if (!Number.isFinite(bytes)) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} kB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function daysUntil(dateStr) {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const due = new Date(y, m - 1, d);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return Math.round((due - today) / 86400000);
+function safeFileName(name) {
+  // Odstráni lomky a podivné znaky, aby cesta v úložisku bola bezpečná.
+  return (name || "subor").replace(/[\\/]/g, "_").replace(/[^\w.\- ()À-ɏ]/g, "_").slice(0, 150);
 }
 
-function formatDate(dateStr) {
-  const [y, m, d] = dateStr.split("-");
-  return `${Number(d)}. ${Number(m)}. ${y}`;
+function uploadFile(path, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const task = uploadBytesResumable(storageRef(storage, path), file, { contentType: file.type || undefined });
+    task.on(
+      "state_changed",
+      (s) => onProgress(Math.round((s.bytesTransferred / s.totalBytes) * 100)),
+      reject,
+      () => resolve(task.snapshot.ref)
+    );
+  });
+}
+
+async function deleteStoredFile(path) {
+  if (!path) return;
+  try {
+    await deleteObject(storageRef(storage, path));
+  } catch (err) {
+    if (err.code !== "storage/object-not-found") throw err;
+  }
 }
 
 function initials(name) {
@@ -283,7 +302,7 @@ function render() {
     if (type && it.type !== type) return false;
     if (subject && (it.subject || "") !== subject) return false;
     if (q) {
-      const hay = [it.title, it.subject, it.content, it.url].join(" ").toLowerCase();
+      const hay = [it.title, it.subject, it.content, it.url, it.fileName].join(" ").toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -292,11 +311,6 @@ function render() {
   const created = (it) => it.createdAt?.toMillis?.() ?? Number.MAX_SAFE_INTEGER; // čakajúce zápisy sú najnovšie
   view.sort((a, b) => {
     if (sort === "title") return (a.title || "").localeCompare(b.title || "", "sk");
-    if (sort === "due") {
-      const ad = a.due || "9999-99-99";
-      const bd = b.due || "9999-99-99";
-      return ad === bd ? created(b) - created(a) : ad.localeCompare(bd);
-    }
     return created(b) - created(a);
   });
 
@@ -323,19 +337,10 @@ function refreshSubjects() {
 
 function renderCard(it) {
   const card = document.createElement("article");
-  card.className = "card" + (it.type === "task" && it.done ? " done" : "");
+  card.className = "card";
 
   const head = document.createElement("div");
   head.className = "card-head";
-
-  if (it.type === "task") {
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = Boolean(it.done);
-    cb.setAttribute("aria-label", "Hotovo");
-    cb.addEventListener("change", () => toggleDone(it, cb));
-    head.appendChild(cb);
-  }
 
   const title = document.createElement("h3");
   title.className = "card-title";
@@ -353,15 +358,21 @@ function renderCard(it) {
   };
   addChip(TYPE_LABEL[it.type] || "Položka");
   if (it.subject) addChip(it.subject);
-  if (it.type === "task" && it.due) {
-    const d = daysUntil(it.due);
-    let cls = "chip-due";
-    let label = `Termín: ${formatDate(it.due)}`;
-    if (!it.done && d < 0) { cls += " overdue"; label += " (po termíne)"; }
-    else if (!it.done && d <= 2) { cls += " soon"; label += d === 0 ? " (dnes)" : " (čoskoro)"; }
-    addChip(label, cls);
-  }
+  if (it.createdAt?.toDate) addChip(it.createdAt.toDate().toLocaleDateString("sk-SK"));
   card.appendChild(meta);
+
+  if (it.type === "file" && it.fileUrl) {
+    const href = safeUrl(it.fileUrl);
+    if (href) {
+      const a = document.createElement("a");
+      a.className = "card-link";
+      a.href = href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = `${it.fileName || "Súbor"}${it.fileSize ? ` (${formatSize(it.fileSize)})` : ""}`;
+      card.appendChild(a);
+    }
+  }
 
   if (it.type === "link" && it.url) {
     const href = safeUrl(it.url);
@@ -401,21 +412,10 @@ function renderCard(it) {
   return card;
 }
 
-async function toggleDone(it, checkbox) {
-  try {
-    await updateDoc(doc(db, "users", currentUser.uid, "items", it.id), {
-      done: checkbox.checked,
-      updatedAt: serverTimestamp()
-    });
-  } catch (err) {
-    checkbox.checked = !checkbox.checked;
-    showMsg($("load-error"), friendlyError(err));
-  }
-}
-
 async function removeItem(it) {
   if (!confirm(`Naozaj zmazať „${it.title || "položku"}“?`)) return;
   try {
+    await deleteStoredFile(it.filePath);
     await deleteDoc(doc(db, "users", currentUser.uid, "items", it.id));
   } catch (err) {
     showMsg($("load-error"), friendlyError(err));
@@ -428,7 +428,7 @@ async function removeItem(it) {
 function syncTypeFields() {
   const t = $("item-type").value;
   show($("row-url"), t === "link");
-  show($("row-due"), t === "task");
+  show($("row-file"), t === "file");
 }
 $("item-type").addEventListener("change", syncTypeFields);
 
@@ -439,7 +439,11 @@ function openItemDialog(it = null) {
   $("item-title").value = it?.title || "";
   $("item-subject").value = it?.subject || "";
   $("item-url").value = it?.url || "";
-  $("item-due").value = it?.due || "";
+  $("item-file").value = "";
+  $("item-file-current").textContent = it?.type === "file" && it.fileName
+    ? `Aktuálny súbor: ${it.fileName}. Vyber nový, ak ho chceš nahradiť.`
+    : "";
+  show($("upload-progress"), false);
   $("item-content").value = it?.content || "";
   showMsg($("item-error"), "");
   syncTypeFields();
@@ -478,14 +482,50 @@ $("item-form").addEventListener("submit", async (e) => {
     data.url = "";
   }
 
-  data.due = type === "task" ? $("item-due").value : "";
+  const uid = currentUser.uid;
+  const existing = editingId ? items.find((i) => i.id === editingId) : null;
+  const file = type === "file" ? $("item-file").files[0] : null;
+
+  if (file && file.size > MAX_FILE_BYTES) {
+    showMsg($("item-error"), "Súbor je príliš veľký (max. 25 MB).");
+    return;
+  }
+  if (type === "file" && !file && !existing?.filePath) {
+    showMsg($("item-error"), "Vyber súbor, ktorý chceš nahrať.");
+    return;
+  }
 
   $("item-save").disabled = true;
   try {
+    const itemRef = editingId ? doc(db, "users", uid, "items", editingId) : doc(itemsCol());
+    let pathToDelete = null;
+
+    if (file) {
+      const path = `users/${uid}/files/${itemRef.id}/${Date.now()}-${safeFileName(file.name)}`;
+      const bar = $("upload-progress");
+      bar.value = 0;
+      show(bar, true);
+      const fileRef = await uploadFile(path, file, (p) => { bar.value = p; });
+      data.fileUrl = await getDownloadURL(fileRef);
+      data.filePath = path;
+      data.fileName = file.name;
+      data.fileSize = file.size;
+      data.fileType = file.type || "";
+      pathToDelete = existing?.filePath || null; // starý súbor po nahradení zmažeme
+    } else if (type !== "file" && existing?.filePath) {
+      // Položka už nie je súbor, tak ho odstránime aj z úložiska.
+      Object.assign(data, { fileUrl: "", filePath: "", fileName: "", fileSize: 0, fileType: "" });
+      pathToDelete = existing.filePath;
+    }
+
     if (editingId) {
-      await updateDoc(doc(db, "users", currentUser.uid, "items", editingId), data);
+      await updateDoc(itemRef, data);
     } else {
-      await addDoc(itemsCol(), { ...data, done: false, createdAt: serverTimestamp() });
+      await setDoc(itemRef, { ...data, createdAt: serverTimestamp() });
+    }
+
+    if (pathToDelete) {
+      try { await deleteStoredFile(pathToDelete); } catch { /* nie je kritické */ }
     }
     $("item-dialog").close();
   } catch (err) {

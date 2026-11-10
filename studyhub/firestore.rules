@@ -17,7 +17,7 @@ service cloud.firestore {
       allow read, delete: if request.auth != null && request.auth.uid == userId;
       allow create, update: if request.auth != null
                             && request.auth.uid == userId
-                            && request.resource.data.type in ['note', 'link', 'task']
+                            && request.resource.data.type in ['note', 'link', 'file']
                             && request.resource.data.title is string
                             && request.resource.data.title.size() > 0
                             && request.resource.data.title.size() <= 200
