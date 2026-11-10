@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Profil: users/{uid}. Každý vidí a mení len svoj vlastný.
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null
+                            && request.auth.uid == userId
+                            && request.resource.data.displayName is string
+                            && request.resource.data.displayName.size() <= 100;
+      allow delete: if false;
+    }
+
+    // Položky: users/{uid}/items/{itemId}. Len vlastník.
+    match /users/{userId}/items/{itemId} {
+      allow read, delete: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null
+                            && request.auth.uid == userId
+                            && request.resource.data.type in ['note', 'link', 'task']
+                            && request.resource.data.title is string
+                            && request.resource.data.title.size() > 0
+                            && request.resource.data.title.size() <= 200
+                            && (!('content' in request.resource.data)
+                                || (request.resource.data.content is string
+                                    && request.resource.data.content.size() <= 20000));
+    }
+
+    // Všetko ostatné je zakázané.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StudyHub</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Zobrazí sa, kým nie je vyplnený firebase-config.js -->
+  <section id="setup-banner" class="center-card" hidden>
+    <h1>StudyHub</h1>
+    <p>Aplikácia ešte nie je prepojená s Firebase.</p>
+    <p>Otvor súbor <code>studyhub/firebase-config.js</code>, vlož doň údaje svojho Firebase projektu a obnov stránku. Celý postup je v <code>README.md</code>.</p>
+  </section>
+
+  <!-- Prihlásenie -->
+  <section id="auth-view" class="center-card" hidden>
+    <h1>StudyHub</h1>
+    <p class="muted">Tvoje poznámky, odkazy a úlohy do školy na jednom mieste.</p>
+
+    <button id="google-btn" class="btn btn-block" type="button">Pokračovať cez Google</button>
+    <div class="divider"><span>alebo</span></div>
+
+    <form id="auth-form" autocomplete="on">
+      <label id="name-row" for="auth-name" hidden>
+        Meno
+        <input id="auth-name" type="text" maxlength="100" autocomplete="name">
+      </label>
+      <label for="auth-email">
+        E-mail
+        <input id="auth-email" type="email" required autocomplete="email">
+      </label>
+      <label for="auth-password">
+        Heslo
+        <input id="auth-password" type="password" required minlength="6" autocomplete="current-password">
+      </label>
+      <p id="auth-error" class="error" role="alert" hidden></p>
+      <button id="auth-submit" class="btn btn-primary btn-block" type="submit">Prihlásiť sa</button>
+    </form>
+
+    <p class="muted small">
+      <a href="#" id="auth-toggle">Nemáš účet? Zaregistruj sa</a>
+      <span id="reset-sep"> · </span>
+      <a href="#" id="reset-link">Zabudnuté heslo</a>
+    </p>
+  </section>
+
+  <!-- Hlavná aplikácia -->
+  <section id="app-view" hidden>
+    <header class="topbar">
+      <h1>StudyHub</h1>
+      <div class="topbar-right">
+        <button id="profile-btn" class="user-chip" type="button" title="Upraviť profil">
+          <span id="avatar" class="avatar" aria-hidden="true"></span>
+          <span id="user-name"></span>
+        </button>
+        <button id="signout-btn" class="btn" type="button">Odhlásiť sa</button>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Hľadať…" aria-label="Hľadať">
+        <select id="filter-type" aria-label="Typ">
+          <option value="">Všetky typy</option>
+          <option value="note">Poznámky</option>
+          <option value="link">Odkazy</option>
+          <option value="task">Úlohy</option>
+        </select>
+        <select id="filter-subject" aria-label="Predmet">
+          <option value="">Všetky predmety</option>
+        </select>
+        <select id="sort" aria-label="Zoradiť">
+          <option value="newest">Najnovšie</option>
+          <option value="due">Podľa termínu</option>
+          <option value="title">Podľa názvu</option>
+        </select>
+        <button id="add-btn" class="btn btn-primary" type="button">+ Pridať</button>
+      </div>
+
+      <p id="status" class="muted small" aria-live="polite"></p>
+      <p id="load-error" class="error" role="alert" hidden></p>
+
+      <div id="list" class="list"></div>
+      <p id="empty" class="muted center" hidden>Zatiaľ tu nič nie je. Pridaj prvú položku tlačidlom „+ Pridať“.</p>
+    </main>
+  </section>
+
+  <!-- Dialóg: pridať / upraviť položku -->
+  <dialog id="item-dialog">
+    <form id="item-form">
+      <h2 id="item-dialog-title">Nová položka</h2>
+
+      <label for="item-type">
+        Typ
+        <select id="item-type">
+          <option value="note">Poznámka</option>
+          <option value="link">Odkaz</option>
+          <option value="task">Úloha</option>
+        </select>
+      </label>
+
+      <label for="item-title">
+        Názov
+        <input id="item-title" type="text" required maxlength="200">
+      </label>
+
+      <label for="item-subject">
+        Predmet
+        <input id="item-subject" type="text" maxlength="100" list="subject-list" placeholder="napr. Matematika">
+        <datalist id="subject-list"></datalist>
+      </label>
+
+      <label for="item-url" id="row-url" hidden>
+        Adresa odkazu
+        <input id="item-url" type="text" maxlength="2000" placeholder="https://…">
+      </label>
+
+      <label for="item-due" id="row-due" hidden>
+        Termín
+        <input id="item-due" type="date">
+      </label>
+
+      <label for="item-content">
+        Obsah / popis
+        <textarea id="item-content" rows="6" maxlength="20000"></textarea>
+      </label>
+
+      <p id="item-error" class="error" role="alert" hidden></p>
+
+      <div class="dialog-actions">
+        <button id="item-cancel" class="btn" type="button">Zrušiť</button>
+        <button id="item-save" class="btn btn-primary" type="submit">Uložiť</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Dialóg: profil -->
+  <dialog id="profile-dialog">
+    <form id="profile-form">
+      <h2>Tvoj profil</h2>
+      <label for="profile-name">
+        Meno
+        <input id="profile-name" type="text" required maxlength="100">
+      </label>
+      <label for="profile-school">
+        Škola / trieda
+        <input id="profile-school" type="text" maxlength="100">
+      </label>
+      <p id="profile-error" class="error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button id="profile-cancel" class="btn" type="button">Zrušiť</button>
+        <button class="btn btn-primary" type="submit">Uložiť</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
