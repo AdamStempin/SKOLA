@@ -1,14 +1,13 @@
-// Sem vlož konfiguráciu svojho Firebase projektu.
-// Firebase konzola -> Nastavenia projektu -> Tvoje aplikácie -> Webová aplikácia -> Config.
+// Konfigurácia Firebase projektu "school-database-2026".
 //
-// Pozor: tieto údaje NIE SÚ tajné (Firebase ich dáva do každej webovej stránky).
-// Údaje chránia pravidlá v súbore firestore.rules, nie skrývanie týchto kľúčov.
+// Tieto údaje NIE SÚ tajné (Firebase ich dáva do každej webovej stránky).
+// Údaje chránia pravidlá v súboroch firestore.rules a storage.rules.
 
 export const firebaseConfig = {
-  apiKey: "VLOZ_SEM_API_KEY",
-  authDomain: "VLOZ_SEM.firebaseapp.com",
-  projectId: "VLOZ_SEM",
-  storageBucket: "VLOZ_SEM.appspot.com",
-  messagingSenderId: "VLOZ_SEM",
-  appId: "VLOZ_SEM"
+  apiKey: "AIzaSyBwtMLvTE-5YuVezcAbZL6upBWTLy0jIR8",
+  authDomain: "school-database-2026.firebaseapp.com",
+  projectId: "school-database-2026",
+  storageBucket: "school-database-2026.firebasestorage.app",
+  messagingSenderId: "530590228470",
+  appId: "1:530590228470:web:95fb5369a108f44b7af1d7"
 };
